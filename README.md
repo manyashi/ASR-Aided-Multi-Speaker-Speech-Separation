@@ -1,12 +1,55 @@
 # ASR-Aided-Multi-Speaker-Speech-Separation
-Overview[cite_start]
-This repository contains the implementation and documentation for a speech separation pipeline that integrates classical beamforming theory (MVDR) with modern deep learning-based separation (SepFormer). [cite_start]The project compares linear and spherical microphone array configurations in simulated reverberant environments. [cite_start]The pipeline includes signal simulation, source separation, and evaluation using Automatic Speech Recognition (ASR) metrics (WER) and signal quality metrics (SI-SNR, PESQ).Table of ContentsTheory and Signal ModelInstallation and RequirementsProject StructurePipeline 1: Linear Array SeparationPipeline 2: Spherical Array SeparationEvaluation MetricsSuggested ImprovementsTheory and Signal ModelMVDR Beamforming[cite_start]The Minimum Variance Distortionless Response (MVDR) beamformer is used to minimize output power (interference and noise) while maintaining a distortionless response for the desired look direction.Signal Model:[cite_start]For an M-element microphone array, the narrowband snapshot is modeled as:$$x(t) = a(\theta_0)s(t) + n(t)$$Where:[cite_start]$a(\theta_0)$ is the steering vector for direction $\theta_0$.[cite_start]$s(t)$ is the desired source.[cite_start]$n(t)$ is the interference and noise.Optimization:[cite_start]The weights $w$ are chosen to minimize $w^H R w$ subject to $w^H a(\theta_0) = 1$, where $R$ is the covariance matrix. [cite_start]The closed-form solution is:$$w_{MVDR} = \frac{R^{-1}a(\theta_0)}{a^H(\theta_0)R^{-1}a(\theta_0)}$$SepFormer (Transformer-Based Separation)[cite_start]SepFormer is a time-domain separation approach that utilizes a dual-path transformer architecture.[cite_start]Encoder: A 1-D convolution maps the raw waveform into encoded frames.[cite_start]Dual-Path Processing: The model splits the input into chunks and applies intra-chunk transformers (short-term dependencies) and inter-chunk transformers (long-term dependencies).[cite_start]Decoder: A transposed convolution reconstructs the time waveform from the masked encoder output.[cite_start]Note: The SepFormer implementation in SpeechBrain typically expects an 8 kHz sampling rate, requiring resampling within the pipeline.Installation and Requirements[cite_start]The project relies on numpy, scipy, pyroomacoustics, torch, torchaudio, speechbrain, and openai-whisper.To install the necessary dependencies:Bash# System requirements
+
+## Overview
+[cite_start]This repository contains the implementation and documentation for a speech separation pipeline that integrates classical beamforming theory (MVDR) with modern deep learning-based separation (SepFormer)[cite: 1, 4]. [cite_start]The project compares linear and spherical microphone array configurations in simulated reverberant environments[cite: 4, 206]. [cite_start]The pipeline includes signal simulation, source separation, and evaluation using Automatic Speech Recognition (ASR) metrics (WER) and signal quality metrics (SI-SNR, PESQ)[cite: 51, 59].
+
+## Table of Contents
+1. Theory and Signal Model
+2. Installation and Requirements
+3. Project Structure
+4. Pipeline 1: Linear Array Separation
+5. Pipeline 2: Spherical Array Separation
+6. Evaluation Metrics
+7. Suggested Improvements
+
+## Theory and Signal Model
+
+### MVDR Beamforming
+[cite_start]The Minimum Variance Distortionless Response (MVDR) beamformer is used to minimize output power (interference and noise) while maintaining a distortionless response for the desired look direction[cite: 19, 32].
+
+**Signal Model**
+[cite_start]For an M-element microphone array, the narrowband snapshot is modeled as[cite: 11, 12]:
+$$x(t) = a(\theta_0)s(t) + n(t)$$
+Where:
+* [cite_start]$a(\theta_0)$ is the steering vector for direction $\theta_0$[cite: 13].
+* [cite_start]$s(t)$ is the desired source[cite: 13].
+* [cite_start]$n(t)$ is the interference and noise[cite: 14].
+
+**Optimization**
+[cite_start]The weights $w$ are chosen to minimize $w^H R w$ subject to $w^H a(\theta_0) = 1$, where $R$ is the covariance matrix [cite: 20-23]. [cite_start]The closed-form solution is[cite: 26]:
+$$w_{MVDR} = \frac{R^{-1}a(\theta_0)}{a^H(\theta_0)R^{-1}a(\theta_0)}$$
+
+### SepFormer (Transformer-Based Separation)
+[cite_start]SepFormer is a time-domain separation approach that utilizes a dual-path transformer architecture[cite: 34].
+* [cite_start]**Encoder:** A 1-D convolution maps the raw waveform into encoded frames[cite: 38].
+* [cite_start]**Dual-Path Processing:** The model splits the input into chunks and applies intra-chunk transformers (short-term dependencies) and inter-chunk transformers (long-term dependencies)[cite: 42, 43].
+* [cite_start]**Decoder:** A transposed convolution reconstructs the time waveform from the masked encoder output[cite: 46, 47].
+
+[cite_start]*Note: The SepFormer implementation in SpeechBrain typically expects an 8 kHz sampling rate, requiring resampling within the pipeline[cite: 50].*
+
+## Installation and Requirements
+
+[cite_start]The project relies on `numpy`, `scipy`, `pyroomacoustics`, `torch`, `torchaudio`, `speechbrain`, and `openai-whisper` [cite: 64-67].
+
+To install the necessary dependencies:
+
+```bash
+# System requirements
 sudo apt update && sudo apt install -y ffmpeg
 
 # Python libraries
 pip install numpy scipy soundfile pyroomacoustics
 pip install torch torchaudio
 pip install speechbrain
-pip install q jiwer
-pip install -q git+https://github.com/openai/whisper.git
-[cite_start]Project Structure[cite_start]linear_array_separation.py: Simulation and separation pipeline using a linear microphone array.[cite_start]spherical_array_separation.py: Simulation and separation pipeline using a spherical microphone array.[cite_start]mixed_matrix.npy: Generated mixture matrix for the linear experiment.[cite_start]mixed_matrix_spherical.npy: Generated mixture matrix for the spherical experiment.Pipeline 1: Linear Array SeparationFile: linear_array_separation.pyThis pipeline simulates a shoebox room environment with a linear microphone array.Process Outline:[cite_start]Load Sources: Loads two clean LibriSpeech audio files.[cite_start]Array Configuration: Configures an 8-microphone linear array with 8 cm spacing.[cite_start]Simulation: Simulates a $5m \times 5m$ room using pyroomacoustics, placing sources at $30^\circ$ and $70^\circ$.[cite_start]Baseline Generation: Selects the center microphone signal as the single-channel baseline.[cite_start]Separation: Resamples the baseline to 8 kHz and applies the pre-trained SepFormer model (sepformer-whamr).[cite_start]Transcription: Transcribes the original sources and estimated outputs using Whisper.[cite_start]Evaluation: Computes Permutation-Invariant Word Error Rate (WER) to evaluate alignment and quality.Pipeline 2: Spherical Array SeparationFile: spherical_array_separation.py[cite_start]This pipeline utilizes a spherical array geometry, which captures spatial cues uniformly in all directions, making it suitable for reverberant environments.Process Outline:[cite_start]SMIR Generation: Uses the smir_generator toolbox to create Room Impulse Responses (RIRs) for a 32-microphone spherical array ($RT_{60} = 0.4s$).[cite_start]Mixing: Convolves clean sources with the generated SMIR matrices to create the multichannel mixture.[cite_start]Reference Selection: Extracts a reference microphone channel for processing.[cite_start]Separation: Resamples to 8 kHz and performs inference using SepFormer.[cite_start]Evaluation: Transcribes audio to align sources and calculates SI-SNRI, SDR, PESQ, and WER.Evaluation Metrics[cite_start]The repository reports the following metrics to assess separation quality:SI-SNRI (Scale-Invariant Signal-to-Noise Ratio Improvement): Measures the improvement in signal quality.SDR (Signal-to-Distortion Ratio): General measure of signal fidelity.PESQ (Perceptual Evaluation of Speech Quality): Automated assessment of speech quality.[cite_start]WER (Word Error Rate): Computed using permutation-invariant alignment of Whisper transcripts to handle source permutation ambiguity.Suggested ImprovementsFuture iterations of this project could include:[cite_start]Multi-channel Integration: Combining MVDR beamforming as a front-end to the SepFormer network to utilize spatial information more effectively.[cite_start]Robust Covariance Estimation: Using neural time-frequency masks to estimate noise covariance for more stable MVDR calculation.[cite_start]Reproducibility: Providing a dedicated requirements.txt with locked versions for speechbrain and torchaudio.
+pip install q jiwer matplotlib
+pip install -q git+[https://github.com/openai/whisper.git](https://github.com/openai/whisper.git)
